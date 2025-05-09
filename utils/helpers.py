@@ -26,10 +26,7 @@ def clip_split_to_remaining(split, remaining):
 
 def cash_spent(split: List[int],
                  venues: List[Venue],
-                 order_size: int,
-                 lambda_over: float,
-                 lambda_under: float,
-                 theta_queue: float) -> float:
+                 order_size: int) -> float:
     """
     Computes the total cost for a given allocation (split) across venues.
 

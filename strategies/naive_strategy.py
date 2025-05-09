@@ -11,29 +11,23 @@ def naive_strategy(order_size, venues):
         float: Total cost of the order.
     """
     # Sort venues by ask price (lowest ask first)
-    venues_sorted = sorted(venues, key=lambda v: v.ask)
+    min_ask = min([v.ask for v in venues])
 
     allocation = []
-    remaining_order = order_size
-    total_cost = 0.0
 
-    # Fill the order with the best ask first, then move to the next best
-    for venue in venues_sorted:
-        if remaining_order <= 0:
-            break
+    for v in venues:
+        if order_size <= 0:
+            qty_to_buy = 0
+        if v.ask == min_ask:
+            qty_to_buy = v.ask_size
+        else:
+            qty_to_buy = 0
 
-        # Take as many shares as possible from this venue
-        qty_to_buy = min(remaining_order, venue.ask_size)
         allocation.append(qty_to_buy)
 
-        # Update total cost (ask price * quantity)
-        total_cost += qty_to_buy * venue.ask
-
         # Update remaining order
-        remaining_order -= qty_to_buy
+        order_size -= qty_to_buy
 
-    # Fill the remaining allocation with 0 if the order was filled partially
-    allocation += [0] * (len(venues) - len(allocation))
 
-    return allocation, total_cost
+    return allocation
 
