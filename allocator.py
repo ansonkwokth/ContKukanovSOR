@@ -1,26 +1,9 @@
 from typing import List, Tuple
+from utils.venue import Venue
 from utils.logger import get_logger
 import logging
 
-logger = get_logger("Allocator")
-# logger = get_logger("Allocator", log_level=logging.DEBUG)
-
-class Venue:
-    """
-    A class representing a trading venue.
-    Attributes:
-        ask (float): The price of the best ask on the venue.
-        ask_size (int): The size of the best ask.
-        fee (float): The fee charged by the venue for a trade.
-        rebate (float): The rebate provided by the venue for market makers.
-    """
-    def __init__(self, ask: float, ask_size: int, fee: float, rebate: float):
-        self.ask = ask
-        self.ask_size = ask_size
-        self.fee = fee
-        self.rebate = rebate
-
-
+logger = get_logger('allocator', log_level=logging.INFO)
 
 def compute_cost(split: List[int],
                  venues: List[Venue],
@@ -58,7 +41,7 @@ def compute_cost(split: List[int],
     cost_pen = lambda_under * underfill + lambda_over * overfill
 
     total_cost = cash_spent + risk_pen + cost_pen
-    logger.debug(f"Split: {split} | Exec: {executed} | Cost: {total_cost:.2f}")
+    # logger.debug(f"Split: {split} | Exec: {executed} | Cost: {total_cost:.2f}")
     return total_cost
 
 
@@ -86,13 +69,14 @@ def allocate(order_size: int,
     """
     step = 100
     splits = [[]]
-    logger.info("Starting allocation search...")
+    # logger.info("Starting allocation search...")
 
     for v in range(len(venues)):
         new_splits = []
         for alloc in splits:
             used = sum(alloc)
             max_v = min(order_size - used, venues[v].ask_size)
+            logger.debug(f"max_v: {max_v}")
             for q in range(0, max_v + 1, step):
                 new_splits.append(alloc + [q])
         splits = new_splits
@@ -101,27 +85,113 @@ def allocate(order_size: int,
     best_cost = float("inf")
     best_split = []
 
+    # logger.debug(f"splits: {splits}")
+
     for alloc in splits:
-        if sum(alloc) != order_size: continue
+        # TODO: why is there such line
+        # if sum(alloc) != order_size: continue
         cost = compute_cost(alloc, venues, order_size,
                             lambda_over, lambda_under, theta_queue)
+        logger.debug(f"alloc: {alloc}; cost: {cost}")
+
         if cost < best_cost:
             best_cost = cost
             best_split = alloc
 
-    logger.info(f"Best split found: {best_split} with cost {best_cost:.2f}")
+    # logger.info(f"Best split found: {best_split} with cost {best_cost:.2f}")
     return best_split, best_cost
 
 
 
 # Quick test
 if __name__ == "__main__":
+    logger = get_logger("Allocator", log_level=logging.DEBUG)
+
     venues = [
-        Venue(ask=10.0, ask_size=3000, fee=0.01, rebate=0.002),
-        Venue(ask=10.1, ask_size=3000, fee=0.01, rebate=0.002)
+        Venue(ask=222.83, ask_size=5000, fee=0, rebate=0.),
+        Venue(ask=222.81, ask_size=400, fee=0., rebate=0)
+    ]
+    order_size = 5000
+    split, cost = allocate(order_size, venues, lambda_over=0, lambda_under=0, theta_queue=0)
+    print("Best Split:", split)
+    print("Expected Cost:", round(cost, 2))
+
+    venues = [
+        Venue(ask=222.83, ask_size=500, fee=0, rebate=0.),
+        Venue(ask=222.81, ask_size=400, fee=0., rebate=0)
+    ]
+    order_size = 5000
+    split, cost = allocate(order_size, venues, lambda_over=0, lambda_under=0, theta_queue=0)
+    print("Best Split:", split)
+    print("Expected Cost:", round(cost, 2))
+
+    venues = [
+        Venue(ask=10.1, ask_size=1000, fee=0.01, rebate=0.002)
+    ]
+    order_size = 5000
+    split, cost = allocate(order_size, venues, lambda_over=0.1, lambda_under=10, theta_queue=0)
+    print("Best Split:", split)
+    print("Expected Cost:", round(cost, 2))
+
+    venues = [
+        Venue(ask=222.74, ask_size=9220, fee=0.01, rebate=0.002)
+    ]
+    order_size = 5000
+    split, cost = allocate(order_size, venues, lambda_over=0.1, lambda_under=0.1, theta_queue=100)
+    print("Best Split:", split)
+    print("Expected Cost:", round(cost, 2))
+
+    venues = [
+        Venue(ask=222.74, ask_size=1220, fee=0.01, rebate=0.002)
+    ]
+    order_size = 5000
+    split, cost = allocate(order_size, venues, lambda_over=0, lambda_under=222.75, theta_queue=0)
+    print("Best Split:", split)
+    print("Expected Cost:", round(cost, 2))
+
+    """
+    print("-"*50)
+    venues = [
+        Venue(ask=10.0, ask_size=5000, fee=0.01, rebate=0.002)
     ]
     order_size = 5000
     split, cost = allocate(order_size, venues, lambda_over=0.1, lambda_under=0.1, theta_queue=0.05)
     print("Best Split:", split)
     print("Expected Cost:", round(cost, 2))
 
+    print("-"*50)
+    venues = [
+        Venue(ask=10.0, ask_size=6002, fee=0.01, rebate=0.002)
+    ]
+    order_size = 5000
+    split, cost = allocate(order_size, venues, lambda_over=0.1, lambda_under=0.1, theta_queue=0.05)
+    print("Best Split:", split)
+    print("Expected Cost:", round(cost, 2))
+
+    print("-"*50)
+    venues = [
+        Venue(ask=10.0, ask_size=6002, fee=0.01, rebate=0.002)
+    ]
+    order_size = 5000
+    split, cost = allocate(order_size, venues, lambda_over=0, lambda_under=0, theta_queue=100)
+    print("Best Split:", split)
+    print("Expected Cost:", round(cost, 2))
+
+    print("-"*50)
+    venues = [
+        Venue(ask=10.0, ask_size=2000, fee=0.01, rebate=0.002)
+    ]
+    order_size = 5000
+    split, cost = allocate(order_size, venues, lambda_over=0, lambda_under=100, theta_queue=0)
+    print("Best Split:", split)
+    print("Expected Cost:", round(cost, 2))
+
+    print("-"*50)
+    venues = [
+        Venue(ask=200.0, ask_size=5000, fee=0.01, rebate=0.002)
+    ]
+    order_size = 5000
+    split, cost = allocate(order_size, venues, lambda_over=0, lambda_under=500, theta_queue=0)
+    print("Best Split:", split)
+    print("Expected Cost:", round(cost, 2))
+    """
