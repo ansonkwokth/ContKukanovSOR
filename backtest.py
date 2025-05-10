@@ -9,6 +9,8 @@ from allocator import allocate, compute_cost # assuming allocator is in the same
 from strategies.naive_strategy import *
 from strategies.SOR_strategy import *
 from strategies.vwap_strategy import *
+from strategies.twap_strategy import *
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,7 +24,7 @@ def parse_args():
     parser.add_argument("-f", "--file", type=str, required=True, help="Path to L1 message CSV file")
     parser.add_argument("--lambda_over", type=float, default=0, help="Overfill penalty")
     # parser.add_argument("--lambda_under", type=float, default=500, help="Underfill penalty")
-    parser.add_argument("--lambda_under", type=float, default=500, help="Underfill penalty")
+    parser.add_argument("--lambda_under", type=float, default=200, help="Underfill penalty")
     parser.add_argument("--theta_queue", type=float, default=0, help="Queue-risk penalty")
     parser.add_argument("--order_size", type=int, default=5000, help="Buy order size")
     parser.add_argument("--fee", type=float, default=0.005, help="Fee")
@@ -59,9 +61,19 @@ def backtest(file: str, order_size_to_fill: int, lambda_over: float, lambda_unde
 
     logger.debug(f"The first snapshot tuple:\n{snapshots[0]}")
 
+
+    twap_buckets_size = 60
+    twap_buckets = det_buckets(snapshots[0][0], snapshots[-1][0], twap_buckets_size)
+    bucket_order_size = round(order_size_to_fill / len(twap_buckets))
+    twap_buckets_order_size = {bucket: bucket_order_size for bucket in twap_buckets}
+    twap_buckets_order_size[twap_buckets[-1]] = 1
+    twap_buckets_order_size[twap_buckets[-1]] = order_size_to_fill - bucket_order_size * (len(twap_buckets)-1)
+
+
     order_size = order_size_to_fill
     order_size_ns = order_size_to_fill
     order_size_vwap = order_size_to_fill
+    order_size_twap = order_size_to_fill
 
     total_cost = 0.0
 
@@ -69,7 +81,15 @@ def backtest(file: str, order_size_to_fill: int, lambda_over: float, lambda_unde
     total_cash_ns = 0.0
     total_cash_vwap = 0.0
 
+    total_cash_for_avg_price = 0.0
+    total_cash_ns_for_avg_price  = 0.0
+    total_cash_vwap_for_avg_price  = 0.0
+
     costs = []
+    costs_ns = []
+    costs_vw = []
+    costs_tw = []
+
     cashs = []
     asks = []
 
@@ -100,16 +120,21 @@ def backtest(file: str, order_size_to_fill: int, lambda_over: float, lambda_unde
             alloc_ns = clip_split_to_remaining(alloc_ns, order_size_ns)
             filled_ns = sum(alloc_ns)
             cash_ns = cash_spent(alloc_ns, venues, filled_ns)
+            costs_ns.append(cash_spent(alloc_ns, venues, filled_ns, False))
             order_size_ns -= filled_ns
             total_cash_ns += cash_ns
 
-            alloc_vwap = vwap_strategy(order_size_ns, venues)
-            alloc_vwap = clip_split_to_remaining(alloc_vwap, order_size_vwap)
-            filled_vwap = sum(alloc_vwap)
-            cash_vwap = cash_spent(alloc_vwap, venues, filled_vwap)
-            order_size_vwap -= filled_vwap
-            total_cash_vwap += cash_vwap
+            alloc_vw = vwap_strategy(order_size_ns, venues)
+            alloc_vw = clip_split_to_remaining(alloc_vw, order_size_vwap)
+            filled_vw = sum(alloc_vw)
+            costs_vw.append(cash_spent(alloc_vw, venues, filled_vw, False))
+            cash_vw = cash_spent(alloc_vw, venues, filled_vw)
+            order_size_vwap -= filled_vw
+            total_cash_vwap += cash_vw
 
+            alloc_tw, twap_buckets_order_size = twap_strategy(twap_buckets_order_size, venues, twap_buckets, twap_buckets_size, ts_event)
+            filled_tw = sum(alloc_tw)
+            costs_tw.append(cash_spent(alloc_tw, venues, filled_tw, False))
 
         best_split, best_cost = SOR_strategy(order_size, venues, lambda_over, lambda_under, theta_queue)
         best_split = clip_split_to_remaining(best_split, order_size)
@@ -123,20 +148,20 @@ def backtest(file: str, order_size_to_fill: int, lambda_over: float, lambda_unde
         if not baselines and early_stop and order_size == 0:
             break
 
-        costs.append(best_cost)
+        costs.append(cash_spent(best_split, venues, filled, False))
         cashs.append(cash)
 
 
 
     logger.info(f"Orders: {order_size}, {order_size_ns}, {order_size_vwap}")
     logger.info(f"Total cost: {total_cost:.4f}")
-    logger.info(f"Average cost per share: {total_cash / order_size_to_fill:.4f}")
-    logger.info(f"NS: Average cost per share: {total_cash_ns / order_size_to_fill:.4f}")
-    logger.info(f"WV: Average cost per share: {total_cash_vwap / order_size_to_fill:.4f}")
+    logger.info(f"Average cost per share: {total_cash / (order_size_to_fill - order_size):.4f}")
+    logger.info(f"NS: Average cost per share: {total_cash_ns / (order_size_to_fill - order_size_ns):.4f}")
+    logger.info(f"WV: Average cost per share: {total_cash_vwap / (order_size_to_fill - order_size_vwap):.4f}")
     if order_size != 0:
         return float("inf"), float("inf")
 
-    return total_cash / order_size_to_fill, costs
+    return total_cash / order_size_to_fill, (costs, costs_ns, costs_vw, costs_tw)
 
 
 def plot_cum_cost(costs):
@@ -176,8 +201,11 @@ if __name__ == "__main__":
 
 
     # Run the backtest with the parsed arguments
-    avg_price, costs = backtest(args.file, args.order_size, lambda_over, lambda_under, theta_queue,
+    avg_price, costs_lt = backtest(args.file, args.order_size, lambda_over, lambda_under, theta_queue,
                                 args.fee, args.rebate, True, False)
-    plot_cum_cost(costs)
+    plot_cum_cost(costs_lt[0])
+    plot_cum_cost(costs_lt[1])
+    plot_cum_cost(costs_lt[2])
+    plot_cum_cost(costs_lt[3])
 
 

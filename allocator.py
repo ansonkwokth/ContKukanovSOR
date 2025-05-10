@@ -89,7 +89,7 @@ def allocate(order_size: int,
 
     for alloc in splits:
         # TODO: why is there such line
-        # if sum(alloc) != order_size: continue
+        if sum(alloc) != order_size: continue
         cost = compute_cost(alloc, venues, order_size,
                             lambda_over, lambda_under, theta_queue)
         logger.debug(f"alloc: {alloc}; cost: {cost}")
@@ -110,6 +110,15 @@ if __name__ == "__main__":
     venues = [
         Venue(ask=222.83, ask_size=5000, fee=0, rebate=0.),
         Venue(ask=222.81, ask_size=400, fee=0., rebate=0)
+    ]
+    order_size = 5000
+    split, cost = allocate(order_size, venues, lambda_over=0, lambda_under=0, theta_queue=0)
+    print("Best Split:", split)
+    print("Expected Cost:", round(cost, 2))
+
+    venues = [
+        Venue(ask=222.83, ask_size=5000, fee=0, rebate=1),
+        Venue(ask=222.81, ask_size=400, fee=100, rebate=0)
     ]
     order_size = 5000
     split, cost = allocate(order_size, venues, lambda_over=0, lambda_under=0, theta_queue=0)
@@ -141,13 +150,6 @@ if __name__ == "__main__":
     print("Best Split:", split)
     print("Expected Cost:", round(cost, 2))
 
-    venues = [
-        Venue(ask=222.74, ask_size=1220, fee=0.01, rebate=0.002)
-    ]
-    order_size = 5000
-    split, cost = allocate(order_size, venues, lambda_over=0, lambda_under=222.75, theta_queue=0)
-    print("Best Split:", split)
-    print("Expected Cost:", round(cost, 2))
 
     """
     print("-"*50)

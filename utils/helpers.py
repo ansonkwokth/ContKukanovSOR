@@ -28,18 +28,12 @@ def clip_split_to_remaining(split: List[int], remaining: int):
 
 def cash_spent(split: List[int],
                  venues: List[Venue],
-                 order_size: int) -> float:
+                 order_size: int,
+                 no_fee_rebate: bool = True) -> float:
     """
     Computes the total cost for a given allocation (split) across venues.
 
     Args:
-        split (List[int]): A list of integers representing how many shares are allocated to each venue.
-        venues (List[Venue]): A list of Venue objects representing the available venues.
-        order_size (int): The total order size to be executed.
-        lambda_over (float): Cost penalty per extra share bought (overfill).
-        lambda_under (float): Cost penalty per unfilled share (underfill).
-        theta_queue (float): Queue-risk penalty.
-
     Returns:
         float: The total cost for the given allocation.
     """
@@ -49,8 +43,10 @@ def cash_spent(split: List[int],
     for i in range(len(venues)):
         exe = min(split[i], venues[i].ask_size)
         executed += exe
-        cash_spent += exe * (venues[i].ask + venues[i].fee)
-        maker_rebate = max(split[i] - exe, 0) * venues[i].rebate
+        fee = 0 if no_fee_rebate else venues[i].fee
+        rebate = 0 if no_fee_rebate else venues[i].rebate
+        cash_spent += exe * (venues[i].ask + fee)
+        maker_rebate = max(split[i] - exe, 0) * rebate
         cash_spent -= maker_rebate
 
     return cash_spent
