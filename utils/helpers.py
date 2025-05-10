@@ -1,7 +1,7 @@
 from typing import List, Tuple
 from utils.venue import Venue
 
-def clip_split_to_remaining(split, remaining):
+def clip_split_to_remaining(split: List[int], remaining: int):
     """
     Clips a split list so that its total does not exceed the remaining order size.
 
@@ -23,6 +23,8 @@ def clip_split_to_remaining(split, remaining):
     # Pad with zeros to maintain same length
     clipped += [0] * (len(split) - len(clipped))
     return clipped
+
+
 
 def cash_spent(split: List[int],
                  venues: List[Venue],
@@ -52,6 +54,7 @@ def cash_spent(split: List[int],
         cash_spent -= maker_rebate
 
     return cash_spent
+
 
 
 if __name__ == "__main__":

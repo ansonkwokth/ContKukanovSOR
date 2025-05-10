@@ -9,7 +9,7 @@ def SOR_strategy(order_size, venues, lambda_over, lambda_under, theta_queue):
         return [0] * len(venues), 0
     # Allocate the order across the venues using the allocator
     best_split, best_cost = allocate(order_size, venues, lambda_over, lambda_under, theta_queue)
-    if len(best_split) == 0:
+    if not best_split:
         return [0] * len(venues), 0
 
     return best_split, best_cost
