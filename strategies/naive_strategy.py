@@ -1,4 +1,7 @@
-def naive_strategy(order_size, venues):
+from typing import List, Tuple
+from utils.venue import Venue
+
+def naive_strategy(order_size: int, venues: List[Venue]) -> List[int]:
     """
     A simple strategy that fills the order by always choosing the venue with the best (lowest) ask price.
 

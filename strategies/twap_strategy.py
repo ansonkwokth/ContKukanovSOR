@@ -1,16 +1,18 @@
+from typing import List, Tuple
+from utils.venue import Venue
 import pandas as pd
 from datetime import timedelta
 
-def det_buckets(start, end, size=60):
+def det_buckets(start: str, end: str, size: float = 60):
     """
     Generate a list of bucket start times between `start` and `end`,
     spaced by `size` seconds. Handles nanosecond ISO 8601 strings.
-    Parameters:
-    - start (str): ISO8601 timestamp with nanoseconds
-    - end (str): ISO8601 timestamp with nanoseconds
-    - size (int): bucket size in seconds (default = 60)
+    Args:
+        start (str): ISO8601 timestamp with nanoseconds
+        end (str): ISO8601 timestamp with nanoseconds
+        size (int): bucket size in seconds (default = 60)
     Returns:
-    - List of pandas.Timestamp bucket start times
+        List of pandas.Timestamp bucket start times
     """
     start_time = pd.to_datetime(start)
     end_time = pd.to_datetime(end)
@@ -25,41 +27,40 @@ def det_buckets(start, end, size=60):
     return buckets
 
 
-def find_bucket(time, buckets, size):
-    time = pd.to_datetime(time)
-
-    bucket_size = timedelta(seconds=size)
-
-    for start in buckets:
-        end = start + bucket_size
-        if start <= time < end:
-            return start
-
-    return None
 
 
-def twap_strategy(bucket_order_size, venues, buckets, size, ts):
-    ts_time = pd.to_datetime(ts)
-    bucket = find_bucket(ts_time, buckets, size)
-    bucket_order_size_now = bucket_order_size[bucket]
+def twap_strategy(bkt_order_size: int, venues: List[Venue]) -> Tuple[List[int], int]:
+    """
+    TWAP (Time-Weighted Average Price) strategy that allocates a bucketed order size
+    across multiple venues based on their ask prices and available sizes.
+
+    Args:
+        bkt_order_size (int): The total size of the order to be executed.
+        venues (List[Venue]): A list of venue objects, each with an 'ask' price and 'ask_size'.
+
+    Returns:
+        Tuple[List[int],int]:
+            - A list of ints representing the amount of order allocated to each venue.
+            - The remaining unallocated portion of the order size (if any).
+    """
+
+    allocation = [0] * len(venues)
 
     total_size = sum(venue.ask_size for venue in venues)
-    allocation = [0] * len(venues)
-    if total_size == 0 or bucket_order_size_now == 0:
-        return allocation, bucket_order_size
+    if total_size == 0:
+        return allocation, bkt_order_size
+    if bkt_order_size == 0:
+        return allocation, bkt_order_size
 
     sorted_indices = [i for i, _ in sorted(enumerate(venues), key=lambda x: x[1].ask)]
 
     for idx in sorted_indices:
         v = venues[idx]
-        exe_size = min(v.ask_size, bucket_order_size_now)
+        exe_size = min(v.ask_size, bkt_order_size)
         allocation[idx] = exe_size
-        bucket_order_size_now -= exe_size
+        bkt_order_size -= exe_size
 
-    bucket_order_size[bucket] = bucket_order_size_now
-
-
-    return allocation, bucket_order_size
+    return allocation, bkt_order_size
 
 
 
