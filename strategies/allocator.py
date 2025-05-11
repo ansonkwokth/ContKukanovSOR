@@ -1,4 +1,7 @@
 from typing import List, Tuple
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.venue import Venue
 from utils.logger import get_logger
 import logging

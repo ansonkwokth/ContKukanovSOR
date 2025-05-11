@@ -2,7 +2,7 @@ from typing import List, Tuple
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from allocator import *
+from strategies.allocator import *
 
 
 def SOR_strategy(

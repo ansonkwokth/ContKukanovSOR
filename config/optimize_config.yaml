@@ -1,0 +1,8 @@
+optimizer:
+  algorithm: "grid"    # Optimization algorithm
+  num_iterations: 3    # Number of iterations for the grid search
+
+  lambda_over_range: [0, 200]       # Range for lambda_over
+  lambda_under_range: [0, 200]      # Range for lambda_under
+  theta_queue_range: [0, 200]       # Range for theta_queue
+
