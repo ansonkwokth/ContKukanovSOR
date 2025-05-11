@@ -1,0 +1,35 @@
+{
+    "Best params": {
+        "lambda_over": 0.0,
+        "lambda_uncer": 0.0,
+        "theta_queue": 100.0
+    },
+    "Results": {
+        "CK Strategy": {
+            "total cash spent": 1113700.0,
+            "average fill price": 222.745
+        },
+        "Baselines": {
+            "Best Ask": {
+                "total cash spent": 1114102.2800000003,
+                "average fill price": 222.825456,
+                "saving": 805
+            },
+            "TWAP": {
+                "total cash spent": 1116181.84,
+                "average fill price": 223.06292166266985,
+                "saving": 3179
+            },
+            "VWAP": {
+                "total cash spent": 1114102.2800000003,
+                "average fill price": 222.825456,
+                "saving": 805
+            }
+        },
+        "Savins": {
+            "Best Ask": 805,
+            "TWAP": 3179,
+            "VWAP": 805
+        }
+    }
+}
