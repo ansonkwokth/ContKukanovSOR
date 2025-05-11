@@ -1,0 +1,92 @@
+# Cont & Kukanov Strategy Backtesting & Optimization Framework
+
+This repository provides a modular framework for evaluating the Cont & Kukanov (C&K) strategy for Smart Order Routing (SOR), as described in"[Optimal Order Placement in Limit Order Markets](https://arxiv.org/pdf/1210.1625])", using historical Level 1 (L1) limit order book data. It also includes a grid search module for hyperparameter optimization.
+
+## Approach
+
+The core idea is to compute optimal order allocations under varying market conditions—specifically different ask prices and volumes—based on historical L1 data. The framework supports:
+- Easy addition of new or baseline strategies under the `strategies/` directory
+- Modular backtesting (`backtest.py`) that outputs a summary of performance and corresponding visual plots. The backtest loop is designed to support easy integration of multiple baseline strategies for side-by-side comparison.
+
+You can run a basic backtest using: `python3 backtest.py -f data/l1_day.csv`. Moreover, the script also accepts additional flexible parameters for more customized runs. To view all available options, use: `python3 backtest.py -h` 
+
+```
+usage: backtest.py [-h] -f FILE [--lambda_over LAMBDA_OVER] [--lambda_under LAMBDA_UNDER] [--theta_queue THETA_QUEUE] [--order_size ORDER_SIZE]
+                   [--fee FEE] [--rebate REBATE] [--optimize OPTIMIZE] [--early_stop EARLY_STOP] [--plot_path PLOT_PATH]
+```
+
+Note: In this setup, the fee and rebate are the same across all venues. An improvement can be made by creating a configuration file for venue-specific information, which could then be imported into the backtest script for more granular control. Then the path to configuration file can be the new argument. 
+
+## Code Structure
+
+```
+├── backtest.py                 # Main backtesting loop and evaluation logic
+├── data/                       # Real and/or synthetic L1 market data
+├── logs/                       # Logs from backtest or optimization runs
+├── strategies/
+│   ├── SOR_strategy.py         # Cont & Kukanov SOR strategy implementation
+│   ├── allocator.py            # C&K order allocation logic
+│   ├── naive_strategy.py       # Naïve “take the best ask” strategy
+│   ├── twap_strategy.py        # Time-Weighted Average Price strategy
+│   └── vwap_strategy.py        # Volume-Weighted Average Price strategy
+└── utils/
+    ├── data.py                 # Data loading and preprocessing
+    ├── gen_fake_data.py        # Generate synthetic L1 data for testing
+    ├── helpers.py              # Helper functions
+    ├── logger.py               # Logging utilities
+    └── venue.py                # Venue data structure
+```
+
+The `allocator.py` module implements the core allocation logic from C&K, designed to be minimal, testable, and extensible. It includes simple test cases for sanity checking, by running `python3 strategies/allocator.py`:
+
+```
+order_size = 5000
+
+venues = [Venue(ask=222.74, ask_size=9220, fee=0.01, rebate=0.002)]
+# Best Split: [5000]
+
+venues = [Venue(ask=10.1, ask_size=1000, fee=0.01, rebate=0.002)]
+# Best Split: [0]
+```
+These examples test:
+- Case 1: `ask_size > order_size` → full fill possible
+- Case 2: `ask_size < order_size` → cannot fill
+
+Multi-venue scenarios are also supported:
+```
+venues = [
+          Venue(ask=222.83, ask_size=5000, fee=0, rebate=0.),
+          Venue(ask=222.81, ask_size=400, fee=0., rebate=0,)
+]
+# Best Split: [4600, 400]
+
+venues = [
+          Venue(ask=222.83, ask_size=5000, fee=0, rebate=1),
+          Venue(ask=222.81, ask_size=400, fee=100, rebate=0)
+]
+# Best Split: [5000, 0]
+```
+These examples test (when `sum(ask_sizes) > order_size`):
+- Case 1: Fill lower ask venue first until capacity is reached
+- Case 2: Avoid the venue with high fees, even if the ask price is lower
+
+
+Data loading and preprocessing are handled by the `utils/data.py` script, which returns a list of L1 order book snapshots used in the backtest.
+
+Since the sample dataset contains only a single `publisher_id`, it does not reflect a multi-venue environment. To simulate multiple venues and test strategy behavior in such settings, you can use the `utils/gen_fake_data.py` script. This script duplicates each message in `ts_event` and modifies the `publisher_id` of the duplicate to `-1`, effectively creating a synthetic second venue.
+
+You can generate the fake data with:
+```
+python3 utils/gen_fake_data.py -i data/l1_day.csv -o data/l1_day_fake.csv
+```
+This will take `data/l1_day.csv` as input and save the generated multi-venue data to `data/l1_day_fake.csv`.
+
+You can then test the backtest framework on the synthetic data using:
+```
+python3 backtest.py -f data/l1_day_fake.csv
+```
+
+
+
+## Parameter Ranges
+
