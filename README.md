@@ -21,6 +21,25 @@ Output:
 
 ![alt text](https://github.com/ansonkwokth/ContKukanovSOR/blob/master/result.png?raw=true)
 
+## Improving Fill Realism
+
+### Problem
+The current backtest assumes immediate fills at posted ask prices up to displayed size, ignoring latency between observing the book and executing the order. In reality, the order book may change before the order arrives, leading to slippage.
+
+### Proposed Improvement: Queue Flow Simulation
+Introduce randomness into the model by simulating queue outflow $\xi \sim F$, where $F$ is a distributon, captures the volume during latency.
+
+### Method
+Replace deterministic fills with stochastic simulation using Monte Carlo.
+Run multiple backtests over different random seed of $\xi$ to obtain a distribution of `total_cost`.
+Optimize parameters `(θ, λu, λo)` with respect to the obtained distribution of `total_cost` or risk measures.
+
+### Bonus: Learn $F$ from Real Data
+To reduce model bias, estimate $F$ directly from historical order book flows during latency windows.
+
+
+
+
 ## Approach
 
 The core idea is to compute optimal order allocations under varying market conditions—specifically different ask prices and volumes—based on historical L1 data. The framework supports:
