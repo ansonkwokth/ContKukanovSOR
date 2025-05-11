@@ -62,7 +62,8 @@ Note: In this setup, the fee and rebate are the same across all venues. An impro
 ## Code Structure
 
 ```
-├── backtest.py                 # Main backtesting loop and evaluation logic
+├── backtest_mod.py             # Main backtesting loop and evaluation logic (modulized)
+├── backtest.py                 # Main backtesting loop and evaluation logic (standalone)
 ├── data/                       # Real and/or synthetic L1 market data
 ├── logs/                       # Logs from backtest or optimization runs
 ├── strategies/
