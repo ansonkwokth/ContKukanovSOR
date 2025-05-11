@@ -26,12 +26,13 @@ Output:
 The core idea is to compute optimal order allocations under varying market conditions—specifically different ask prices and volumes—based on historical L1 data. The framework supports:
 - Easy addition of new or baseline strategies under the `strategies/` directory
 - Modular backtesting (`backtest.py`) that outputs a summary of performance and corresponding visual plots. The backtest loop is designed to support easy integration of multiple baseline strategies for side-by-side comparison.
+- Configurable optimizer settings via `optimize_config`, allowing you to define the optimizer parameters easily.
 
-You can run a basic backtest using: `python3 backtest.py -f data/l1_day.csv`. Moreover, the script also accepts additional flexible parameters for more customized runs. To view all available options, use: `python3 backtest.py -h` 
+You can run a basic backtest using: `python3 backtest.py -f data/l1_day.csv` with the default paramter without optimization. Moreover, the script also accepts additional flexible parameters for more customized runs. To view all available options, use: `python3 backtest.py -h` 
 
 ```
 usage: backtest.py [-h] -f FILE [--lambda_over LAMBDA_OVER] [--lambda_under LAMBDA_UNDER] [--theta_queue THETA_QUEUE] [--order_size ORDER_SIZE]
-                   [--fee FEE] [--rebate REBATE] [--optimize OPTIMIZE] [--early_stop EARLY_STOP] [--plot_path PLOT_PATH]
+                   [--fee FEE] [--rebate REBATE] [--optimize_config OPTIMIZE_CONFIG] [--early_stop EARLY_STOP] [--plot_path PLOT_PATH]
 ```
 
 Note: In this setup, the fee and rebate are the same across all venues. An improvement can be made by creating a configuration file for venue-specific information, which could then be imported into the backtest script for more granular control. Then the path to configuration file can be the new argument. 
@@ -56,6 +57,7 @@ Note: In this setup, the fee and rebate are the same across all venues. An impro
     └── venue.py                # Venue data structure
 ```
 
+### Discussion on Allocator
 The `allocator.py` module implements the core allocation logic from C&K, designed to be minimal, testable, and extensible. It includes simple test cases for sanity checking, by running `python3 strategies/allocator.py`:
 
 ```
@@ -90,6 +92,7 @@ These examples test (when `sum(ask_sizes) > order_size`):
 - Case 2: Avoid the venue with high fees, even if the ask price is lower
 
 
+### Discussion on Data Loading and Cleaning
 Data loading and preprocessing are handled by the `utils/data.py` script, which returns a list of L1 order book snapshots used in the backtest.
 
 Since the sample dataset contains only a single `publisher_id`, it does not reflect a multi-venue environment. To simulate multiple venues and test strategy behavior in such settings, you can use the `utils/gen_fake_data.py` script. This script duplicates each message in `ts_event` and modifies the `publisher_id` of the duplicate to `-1`, effectively creating a synthetic second venue.
@@ -109,11 +112,15 @@ python3 backtest.py -f data/l1_day_fake.csv
 
 ## Parameter Ranges
 
-From a data-driven perspective, I would begin by searching for the order of magnitude of the parameters. For instance, I would explore combinations such as `[0, 0.01, 0.1, 1, 10, 100, 1000]`. Once the best result from this search is found, I would then perform a more fine-grained search on a linear scale to further refine the optimal values.
+### A data-driven perspective
+
+I would begin by searching for the order of magnitude of the parameters. For instance, I would explore combinations such as `[0, 0.01, 0.1, 1, 10, 100, 1000]`. Once the best result from this search is found, I would then perform a more fine-grained search on a linear scale to further refine the optimal values.
 
 Currently, this combination of order of magnitude and linear scale search is not supported in the existing version of the framework. However, it can be implemented by modularizing the optimization logic. By creating a dedicated optimizer in the optimizer/ directory, you can define the search strategies for both the order of magnitude and linear scale approaches. You can then call the new optimizer using the `.yaml` configuration file.
 
-In the theoretical perspective, as described in the pseudo-code:
+### A theoretical perspective
+
+As described in the pseudo-code:
 ```
 risk_pen  ← θ * (underfill + overfill)
 cost_pen  ← λu * underfill + λo * overfill
