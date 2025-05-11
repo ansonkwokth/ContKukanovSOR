@@ -40,6 +40,7 @@ To reduce model bias, estimate $F$ directly from historical order book flows dur
 
 
 
+# Detailed Discussion
 ## Approach
 
 The core idea is to compute optimal order allocations under varying market conditions—specifically different ask prices and volumes—based on historical L1 data. The framework supports:
