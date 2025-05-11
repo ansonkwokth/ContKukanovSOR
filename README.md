@@ -3,6 +3,8 @@
 This repository provides a modular framework for evaluating the Cont & Kukanov (C&K) strategy for Smart Order Routing (SOR), as described in"[Optimal Order Placement in Limit Order Markets](https://arxiv.org/pdf/1210.1625])", using historical Level 1 (L1) limit order book data. It also includes a grid search module for hyperparameter optimization.
 
 ## Short Conculsion 
+> [!NOTE]
+> I based everything on `backtest_mod.py`, which organizes functions into separate modules for easier maintenance. Therefore, I prefer using `backtest_mod.py` for testing. In contrast, as required to upload one script, `backtest.py` is a self-contained script that copies all functions into a single file.
 
 To run the backtest with optimization, generate a plot, and save the results to a file, you can use the following command:
 ```
