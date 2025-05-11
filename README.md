@@ -109,3 +109,38 @@ python3 backtest.py -f data/l1_day_fake.csv
 
 ## Parameter Ranges
 
+From a data-driven perspective, I would begin by searching for the order of magnitude of the parameters. For instance, I would explore combinations such as `[0, 0.01, 0.1, 1, 10, 100, 1000]`. Once the best result from this search is found, I would then perform a more fine-grained search on a linear scale to further refine the optimal values.
+
+Currently, this combination of order of magnitude and linear scale search is not supported in the existing version of the framework. However, it can be implemented by modularizing the optimization logic. By creating a dedicated optimizer in the optimizer/ directory, you can define the search strategies for both the order of magnitude and linear scale approaches. You can then call the new optimizer using the `.yaml` configuration file.
+
+In the theoretical perspective, as described in the pseudo-code:
+```
+risk_pen  ← θ * (underfill + overfill)
+cost_pen  ← λu * underfill + λo * overfill
+tot_cost  ← cash_spent + risk_pen + cost_pen
+```
+This suggests the following total cost equation:
+```
+tot_cost  ← cash_spent + θ * (underfill + overfill) + (λu * underfill + λo * overfill)
+```
+Upon closer examination, the parameter `θ` becomes redundant in this formulation, as it is just a constant added to both `λu` and `λo`. To speed up the optimization, we can skip the `θ` term and redefine the parameters `λu'` and `λo'`:
+```
+tot_cost  ← cash_spent + (λu' * underfill + λo' * overfill)
+```
+where `λu' = θ + λu`, `λo' = θ + λo`. This simplification removes the unnecessary `θ` parameter from the optimization process, while still maintaining the same outcome. This makes the optimization process faster and more efficient.
+
+
+Note also that the order of magnitude of execution order size (`O(exe)`) is from the range: `O(order_size) ~ O(ask_size)`. Consequently, the `O(cash_spent)` term is roughly `O(ask)*O(order_size) ~ O(ask)*O(ask_size)`.
+
+Given the following definitions:
+```
+underfill ← max(order_size - executed, 0)
+overfill  ← max(executed - order_size, 0)
+```
+
+It suggests that `O(underfill)` and `O(overfill)` are also on the order of `O(order_size) ~ O(ask_size)`.
+
+To ensure that the penalty terms have a non-negligible contribution to `tot_cost`, I recommend setting the parameters `θ`, `λu`, and `λo` in the order of magnitude `O(0.1*ask) ~ O(ask)`.
+
+
+## 
